@@ -19,7 +19,7 @@ pt  = PayTable({
 })
 
 mech = ClusterWinMechanic()
-spins = 1000000
+spins = 10000000
 
 sim  = ReelSetSimulator(
     csv_obj       = rm,

@@ -4,6 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 import random as random
 from reels_csv_matrix import ReelsMatrix
+from numba import jit
 
 class Board:
     def __init__(self, num_reels, num_rows, reels_matrix: ReelsMatrix):
@@ -18,11 +19,17 @@ class Board:
         self.rows_count = num_rows
         self.csv_representation = reels_matrix
 
+    
     def generate_board(self):
-        for reel in range(self.reels_count):
-            row_start_index = np.random.randint(0, self.csv_representation.num_rows)
-            indices = (row_start_index + np.arange(self.rows_count)) % self.csv_representation.num_rows
-            self.board[reel] = self.csv_representation.matrix[indices, reel]
+        generate_jit_board(self.board, self.csv_representation.matrix, self.reels_count, self.rows_count)
+
+@jit(nopython = True)
+def generate_jit_board(board: NDArray, csv_matrix: NDArray, reels_cout:int, rows_count:int):
+
+    for reel in range(reels_cout):
+        row_start_index = np.random.randint(0, csv_matrix.shape[0])
+        indices = (row_start_index + np.arange(rows_count)) % csv_matrix.shape[0]
+        board[reel] = csv_matrix[indices, reel]
 
 
 

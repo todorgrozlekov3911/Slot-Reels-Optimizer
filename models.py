@@ -19,7 +19,19 @@ class Board:
         self.rows_count = num_rows
         self.csv_representation = reels_matrix
 
-    
+    @classmethod
+    def from_matrix(cls, num_reels: int, num_rows: int, matrix: NDArray) -> "Board":
+        obj = cls.__new__(cls)
+        obj.board = np.full((num_reels, num_rows), -1)
+        obj.reels_count = num_reels
+        obj.rows_count = num_rows
+        obj.csv_representation = type('MatrixWrapper', (), {
+            'matrix': matrix,
+            'num_reels': matrix.shape[1],
+            'num_rows': matrix.shape[0],
+        })()
+        return obj
+
     def generate_board(self):
         generate_jit_board(self.board, self.csv_representation.matrix, self.reels_count, self.rows_count)
 
@@ -124,6 +136,19 @@ class HitRateVector: # represent a result vector [arv_payout, win_hit_rate, ... 
             f")"
         )
 
+@dataclass
+class Chromosome:
+    reel_matrix:NDArray
+    fitness: float
+    hit_rate_vector: HitRateVector
+
+
+    def copy(self)->"Chromosome":
+        return Chromosome(
+            reel_matrix = self.reel_matrix.copy(),
+            fitness=self.fitness,
+            hit_rate_vector=self.hit_rate_vector
+        )
 
 
 

@@ -1,36 +1,37 @@
 from dataclasses import dataclass
-from reels_csv_matrix import ReelsMatrix
+from numpy.typing import NDArray
 from win_mechanics import WinMechanic
 from models import Board, HitRateVector, PayTable
-from classification_head import ClassificationHead
 import numpy as np
 
+
 @dataclass
-class SimulationResult:
-    state: ClassificationHead
-    hit_rate_vector: HitRateVector
+class SimulationParams:
+    matrix: NDArray
+    win_mechanic: WinMechanic
+    pay_table: PayTable
+    board_reels: int
+    board_rows: int
+
 
 class ReelSetSimulator:
-    def __init__(self, csv_obj: ReelsMatrix, 
-                 win_mechanic:WinMechanic, pay_table: PayTable,
-                 board_reels: int, board_rows: int,
-                 num_iterations: int = 1000):
-        
-        self.win_mechanic        = win_mechanic 
-        self.pay_table           = pay_table
-        self.board               = Board(board_reels, board_rows, csv_obj)
-        self.classification_head = ClassificationHead.from_reels_matrix(self.board.csv_representation)
-        self.num_iterations      = num_iterations
-        self.hit_rate_vector     = HitRateVector(np.zeros(self.board.csv_representation.get_numb_symbols() + 2, dtype=np.float64))
+    def __init__(self, num_iterations: int = 100_000):
+        self.num_iterations = num_iterations
 
-    def run(self) -> SimulationResult:
+    def run(self, params: SimulationParams) -> HitRateVector:
+        matrix = params.matrix
+        min_val, max_val = int(matrix.min()), int(matrix.max())
+        hrv_size = max_val - min_val + 1 + 2
 
-        while self.hit_rate_vector.games < self.num_iterations:
-            self.board.generate_board()
-            self.hit_rate_vector += self.win_mechanic.play(self.board, self.pay_table)
+        board = Board.from_matrix(params.board_reels, params.board_rows, matrix)
+        hrv = HitRateVector(np.zeros(hrv_size, dtype=np.float64))
 
-        self.hit_rate_vector.finalize()
-        return SimulationResult(self.classification_head, self.hit_rate_vector)
+        for _ in range(self.num_iterations):
+            board.generate_board()
+            hrv += params.win_mechanic.play(board, params.pay_table)
+
+        hrv.finalize()
+        return hrv
     
 
 

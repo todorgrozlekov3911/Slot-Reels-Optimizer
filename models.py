@@ -1,5 +1,6 @@
 
 from dataclasses import dataclass
+from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
 import random as random
@@ -46,17 +47,8 @@ def generate_jit_board(board: NDArray, csv_matrix: NDArray, reels_cout:int, rows
 
 
 
-# rm:ReelsMatrix = ReelsMatrix("reels_base.csv")
-# board_test:Board = Board(5, 5, rm )
-# board_test.generate_board()
-# print(board_test.board)
-# board_test.generate_board()
-# print(board_test.board)
 
-# board_test_fail:Board = Board(10, 5, rm )
-
-
-
+PAYOT_MULTIPLIER = 100 # standartly we represent money/payout in cents -> 1$ == 100 as numeric val
 @dataclass
 class PayTable:
     
@@ -90,14 +82,19 @@ class HitRateVector: # represent a result vector [arv_payout, win_hit_rate, ... 
         self.data[1] += int(outcome.total_win > 0)
 
         for entry in outcome.win_breakdown:
-            self.data[2 + entry["symbol"]] += entry["win"]
+            self.data[2 + entry["symbol"]] += 1
         self.games += 1
 
         return self
     
+    def copy(self)->"HitRateVector":
+        new = HitRateVector(self.data.copy())
+        new.games = self.games
+        return new
+    
     def finalize(self):
         hit_count     = self.data[1]                                       
-        self.data[0]  = self.data[0] / hit_count if hit_count > 0 else 0.0 
+        self.data[0]  = self.data[0] / hit_count / PAYOT_MULTIPLIER if hit_count > 0 else 0.0 
         self.data[1]  = hit_count / self.games                              
         self.data[2:] = self.data[2:] / self.games   
 
@@ -138,17 +135,24 @@ class HitRateVector: # represent a result vector [arv_payout, win_hit_rate, ... 
 
 @dataclass
 class Chromosome:
-    reel_matrix:NDArray
-    fitness: float
-    hit_rate_vector: HitRateVector
+    reel_matrix: NDArray
+    fitness: float = float('inf')
+    hit_rate_vector: Optional[HitRateVector] = None
+    eval_count: int = 0
 
 
     def copy(self)->"Chromosome":
         return Chromosome(
             reel_matrix = self.reel_matrix.copy(),
             fitness=self.fitness,
-            hit_rate_vector=self.hit_rate_vector
+            hit_rate_vector=self.hit_rate_vector.copy() if self.hit_rate_vector else None,
+            eval_count= self.eval_count
         )
+
+    def invalidate(self):
+        self.fitness = float('inf')
+        self.hit_rate_vector= None
+        self.eval_count = 0
 
 
 

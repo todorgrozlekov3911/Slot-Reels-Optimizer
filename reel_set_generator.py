@@ -22,8 +22,8 @@ class GAParams:
 class GeneticOptimizer:
 
     def run(self, describe: bool = True) -> Chromosome:
-        stagnation_counter = 0
 
+        stagnation_counter = 0
         for gen in range(self.params.max_generations):
             self.run_generation()
 
@@ -54,7 +54,7 @@ class GeneticOptimizer:
 
 
         if self.save_path is not None:
-            self.save_best(self.set_save_path)
+            self.save_best(self.save_path)
 
         return self.get_best()
 
@@ -83,13 +83,10 @@ class GeneticOptimizer:
         chosen = np.random.choice(positions, size=count_swap, replace=False)
         matrix[chosen, reel_pick] = val_i
 
-        chromosome.hit_rate_vector = None
-        chromosome.fitness = float('inf')
+        chromosome.invalidate()
 
     def evaluate(self, chromosome: Chromosome):
-        if chromosome.hit_rate_vector is not None:
-            return #znachi e elit
-
+       
         sim_params = SimulationParams(
             matrix       =chromosome.reel_matrix,
             win_mechanic =self.win_mechanic,
@@ -98,16 +95,25 @@ class GeneticOptimizer:
             board_rows   =self.board_rows,
         )
 
-        hrv = self.simulator.run(sim_params)
-
-        chromosome.hit_rate_vector = hrv
-        chromosome.fitness = self._weighted_distance(hrv.data, self.target_hrv)
+        hrv  = self.simulator.run(sim_params)
+        dist = self._weighted_distance(hrv.data, self.target_hrv)
+        if chromosome.eval_count == 0:
+            chromosome.hit_rate_vector = hrv
+            chromosome.fitness = dist
+        else:
+            chromosome.fitness = (chromosome.fitness * chromosome.eval_count + dist) / (chromosome.eval_count+1)
+            chromosome.hit_rate_vector.data = (chromosome.hit_rate_vector.data * chromosome.eval_count + hrv.data) / (chromosome.eval_count+1)
+        
+        chromosome.eval_count+=1
 
     def _weighted_distance(self, hrv: np.ndarray, target: np.ndarray) -> float:
-        min_len = min(len(hrv), len(target), len(self.weights))
-        errors = (hrv[:min_len] - target[:min_len]) ** 2
-        weighted_errors = self.weights[:min_len] * errors
-        return float(np.sqrt(np.sum(weighted_errors)))
+        tolerance = target * 0.20
+        diff = hrv - target
+    
+        penalized = np.where(np.abs(diff) > tolerance, diff, 0.0)
+        
+        errors = (penalized ** 2)
+        return float(np.sqrt(np.sum(self.weights * errors)))
 
     def run_generation(self):
         for chrom in self.population:
@@ -181,18 +187,10 @@ class GeneticOptimizer:
         self.save_path = save_path
 
     def initialize_population(self, base_matrix: np.ndarray):
-        self.population.append(Chromosome(
-            reel_matrix=base_matrix.copy(),
-            fitness=float('inf'),
-            hit_rate_vector=None
-        ))
+        self.population.append(Chromosome(reel_matrix=base_matrix.copy()))
 
         for _ in range(self.params.population_size - 1):
-            chrom = Chromosome(
-                reel_matrix=base_matrix.copy(),
-                fitness=float('inf'),
-                hit_rate_vector=None
-            )
+            chrom = Chromosome(reel_matrix=base_matrix.copy())
             self.mutate(chrom)
             self.population.append(chrom)
 

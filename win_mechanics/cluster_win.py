@@ -1,17 +1,9 @@
-from abc import ABC, abstractmethod
 from numpy.typing import NDArray
-from collections import deque
 from numba import jit
 import numpy as np
-
+from reel_set_simulator.win_mechanics.win_mechanic_base import WinInfo, WinMechanic
 from models import Board, PayTable, WinInfo
 
-class WinMechanic(ABC):
-
-    @abstractmethod
-    def play(self, board: Board, pay_table: PayTable) -> WinInfo:
-        # returns (total_win, list of {symbol, size, positions, win} per cluster)
-        ...
 
 class ClusterWinMechanic(WinMechanic):
 
@@ -94,6 +86,8 @@ def jit_bfs(board: NDArray, start_reel: int, start_row: int, symbol: int, visite
             tail += 1
 
     return cluster_size
+
+
     
             
 

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from numpy.typing import NDArray
-from win_mechanics import WinMechanic
+from tools.reel_set_simulator.win_mechanics.cluster_win import WinMechanic
 from models import Board, HitRateVector, PayTable
 import numpy as np
 
